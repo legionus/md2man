@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"html"
 	"strings"
+	"unicode"
 
 	"github.com/russross/blackfriday"
 )
 
-type roffRenderer struct{}
+type roffRenderer struct{
+	needTrimLeftSpace bool
+}
 
 func RoffRenderer(flags int) blackfriday.Renderer {
 	return &roffRenderer{}
@@ -22,6 +25,9 @@ func (r *roffRenderer) GetFlags() int {
 func (r *roffRenderer) TitleBlock(out *bytes.Buffer, text []byte) {
 	out.WriteString(".TH ")
 
+	maxArgs := 5
+	numArgs := 0
+
 	splitText := bytes.Split(text, []byte("\n"))
 	for i, line := range splitText {
 		line = bytes.TrimPrefix(line, []byte("% "))
@@ -32,13 +38,16 @@ func (r *roffRenderer) TitleBlock(out *bytes.Buffer, text []byte) {
 		line = append([]byte("\""), line...)
 		line = append(line, []byte("\" ")...)
 		out.Write(line)
+		numArgs++
 	}
-
-	out.WriteString(" \"\"\n")
+	for ; numArgs < maxArgs; numArgs++ {
+		out.WriteString(" \"\"")
+	}
+	out.WriteString("\n")
 }
 
 func (r *roffRenderer) BlockCode(out *bytes.Buffer, text []byte, lang string) {
-	out.WriteString("\n.PP\n.RS\n\n.nf\n")
+	out.WriteString("\n.PP\n.RS\n.nf\n")
 	escapeSpecialChars(out, text)
 	out.WriteString("\n.fi\n.RE\n")
 }
@@ -61,7 +70,7 @@ func (r *roffRenderer) Header(out *bytes.Buffer, text func() bool, level int, id
 		// This is the doc header
 		out.WriteString(".TH ")
 	case level == 1:
-		out.WriteString("\n\n.SH ")
+		out.WriteString("\n.SH ")
 	case level == 2:
 		out.WriteString("\n.SH ")
 	default:
@@ -89,12 +98,12 @@ func (r *roffRenderer) List(out *bytes.Buffer, text func() bool, flags int) {
 		out.Truncate(marker)
 		return
 	}
-
 }
 
 func (r *roffRenderer) ListItem(out *bytes.Buffer, text []byte, flags int) {
 	out.WriteString("\n.IP\n\\(bu ")
 	out.Write(text)
+	out.WriteString("\n.PD 0\n")
 }
 
 func (r *roffRenderer) Paragraph(out *bytes.Buffer, text func() bool) {
@@ -112,7 +121,6 @@ func (r *roffRenderer) Paragraph(out *bytes.Buffer, text func() bool) {
 // TODO: This might now work
 func (r *roffRenderer) Table(out *bytes.Buffer, header []byte, body []byte, columnData []int) {
 	out.WriteString(".TS\nallbox;\n")
-
 	out.Write(header)
 	out.Write(body)
 	out.WriteString("\n.TE\n")
@@ -144,17 +152,15 @@ func (r *roffRenderer) TableCell(out *bytes.Buffer, text []byte, align int) {
 }
 
 func (r *roffRenderer) Footnotes(out *bytes.Buffer, text func() bool) {
-
 }
 
 func (r *roffRenderer) FootnoteItem(out *bytes.Buffer, name, text []byte, flags int) {
-
 }
 
 func (r *roffRenderer) AutoLink(out *bytes.Buffer, link []byte, kind int) {
-	out.WriteString("\n\\[la]")
+	out.WriteString("\n\\(la")
 	out.Write(link)
-	out.WriteString("\\[ra]")
+	out.WriteString("\\(ra")
 }
 
 func (r *roffRenderer) CodeSpan(out *bytes.Buffer, text []byte) {
@@ -183,7 +189,7 @@ func (r *roffRenderer) LineBreak(out *bytes.Buffer) {
 }
 
 func (r *roffRenderer) Link(out *bytes.Buffer, link []byte, title []byte, content []byte) {
-	r.AutoLink(out, link, 0)
+	out.WriteString(fmt.Sprintf("%s [URL: %q]\n", string(content), string(link)))
 }
 
 func (r *roffRenderer) RawHtmlTag(out *bytes.Buffer, tag []byte) {
@@ -191,16 +197,16 @@ func (r *roffRenderer) RawHtmlTag(out *bytes.Buffer, tag []byte) {
 }
 
 func (r *roffRenderer) TripleEmphasis(out *bytes.Buffer, text []byte) {
-	out.WriteString("\\s+2")
+	out.WriteString("\n.BI ")
 	out.Write(text)
-	out.WriteString("\\s-2")
+	out.WriteString("\n")
+	r.needTrimLeftSpace = true
 }
 
 func (r *roffRenderer) StrikeThrough(out *bytes.Buffer, text []byte) {
 }
 
 func (r *roffRenderer) FootnoteRef(out *bytes.Buffer, ref []byte, id int) {
-
 }
 
 func (r *roffRenderer) Entity(out *bytes.Buffer, entity []byte) {
@@ -227,10 +233,15 @@ func processFooterText(text []byte) []byte {
 }
 
 func (r *roffRenderer) NormalText(out *bytes.Buffer, text []byte) {
+	if r.needTrimLeftSpace {
+		text = []byte(strings.TrimLeftFunc(string(text), unicode.IsSpace))
+		r.needTrimLeftSpace = false
+	}
 	escapeSpecialChars(out, text)
 }
 
 func (r *roffRenderer) DocumentHeader(out *bytes.Buffer) {
+	out.WriteString(".\\\" man page\n")
 }
 
 func (r *roffRenderer) DocumentFooter(out *bytes.Buffer) {
