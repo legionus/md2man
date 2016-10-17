@@ -48,7 +48,12 @@ func (r *roffRenderer) TitleBlock(out *bytes.Buffer, text []byte) {
 
 func (r *roffRenderer) BlockCode(out *bytes.Buffer, text []byte, lang string) {
 	out.WriteString("\n.PP\n.RS\n.nf\n")
-	escapeSpecialChars(out, text)
+	for i := 0; i < len(text); i++ {
+		if i == 0 || (i > 0 &&  text[i-1] == '\n') {
+			out.WriteString("\\&")
+		}
+		out.WriteByte(text[i])
+	}
 	out.WriteString("\n.fi\n.RE\n")
 }
 
