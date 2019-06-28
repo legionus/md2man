@@ -1,32 +1,26 @@
 package main
 
 import (
-	"fmt"
 	"flag"
-	"os"
+	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 
-	"github.com/russross/blackfriday"
+	"gopkg.in/russross/blackfriday.v2"
 )
 
 var (
 	showHelp = flag.Bool("help", false, "show this text and exit")
-	outFile = flag.String("output", "", "send output to `FILE'")
+	outFile  = flag.String("output", "", "send output to `FILE'")
 )
 
 func Render(doc []byte) []byte {
 	renderer := RoffRenderer(0)
-	extensions := 0
-	extensions |= blackfriday.EXTENSION_NO_INTRA_EMPHASIS
-	extensions |= blackfriday.EXTENSION_TABLES
-	extensions |= blackfriday.EXTENSION_FENCED_CODE
-	extensions |= blackfriday.EXTENSION_AUTOLINK
-	extensions |= blackfriday.EXTENSION_SPACE_HEADERS
-	extensions |= blackfriday.EXTENSION_FOOTNOTES
-	extensions |= blackfriday.EXTENSION_TITLEBLOCK
-
-	return blackfriday.Markdown(doc, renderer, extensions)
+	return blackfriday.Run(doc,
+		blackfriday.WithRenderer(renderer),
+		blackfriday.WithExtensions(blackfriday.CommonExtensions|blackfriday.Titleblock),
+	)
 }
 
 func main() {
