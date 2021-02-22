@@ -1,10 +1,10 @@
 %global import_path github.com/legionus/md2man
 Name: md2man
 Version: 1.0
-Release: alt1
+Release: alt2
 
 Summary: md2man creates simple man pages from the markdown file
-License: GPLv3+
+License: GPL-3.0-or-later
 Group: Development/Other
 Url: https://github.com/legionus/md2man
 
@@ -39,5 +39,8 @@ export IGNORE_SOURCES=1
 %_bindir/*
 
 %changelog
+* Mon Feb 22 2021 Alexey Gladkov <legion@altlinux.ru> 1.0-alt2
+- Fix license tag. 
+
 * Mon Oct 17 2016 Alexey Gladkov <legion@altlinux.ru> 1.0-alt1
 - First release.
